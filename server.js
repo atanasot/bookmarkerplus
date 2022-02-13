@@ -4,6 +4,9 @@ const sequelize = new Sequelize(
 );
 const express = require("express");
 const app = express();
+//app.use(express.urlencoded({extended: false})) //this we need for the post method to display the input
+
+//app.use(methodOverride('_method'))  -- use this when we try to say method=delete in the form
 
 const Bookmark = sequelize.define("bookmark", {
   name: {
@@ -17,7 +20,6 @@ const Category = sequelize.define("category", {
   name: {
     type: Sequelize.STRING,
     allowNull: false,
-    //???
     unique: true,
   },
 });
@@ -29,6 +31,14 @@ Category.hasMany(Bookmark);
 
 app.get("/", (req, res) => res.redirect("/bookmarks"));
 
+// app.post('/bookmarks' , async(req, res, next) => {
+//   try {
+//     const bookmark = await Bookmark.create(req.body)
+//     res.redirect
+//   }
+
+// })
+
 app.get("/bookmarks", async (req, res, next) => {
   try {
     const bookmarks = await Bookmark.findAll({
@@ -37,13 +47,16 @@ app.get("/bookmarks", async (req, res, next) => {
     //const categories = await Category.findAll();
     res.send(
       `<html>
+        <head>
+          <title>ACME Bookmarks</title>
+        </head>
         <h1>ACME Bookmarks +</h1>
         <body>
             <ul>
              ${bookmarks
                .map(
                  (bookmark) =>
-                   `<li>${bookmark.name} <a href="/categories/${bookmark.category.id}">${bookmark.category.name}</a></li>`
+                   `<li>${bookmark.name} <a href="/categories/${bookmark.categoryId}">${bookmark.category.name}</a></li>`
                )
                .join("")}
             </ul>
@@ -56,14 +69,30 @@ app.get("/bookmarks", async (req, res, next) => {
 });
 
 app.get("/categories/:id", async (req, res, next) => {
-  //!!
   try {
-    const categories = await Category.findByPk(req.params.id);
+    const categories = await Category.findByPk(req.params.id, {
+      include: [Bookmark],
+    });
+
     res.send(
       `<html>
-          <h1>${categories.name}</h1>
+          <head>
+              <title>Categories</title>
+          </head>
           <body>
-          
+            <h1>ACME Bookmarks</h1>
+            <a href='/bookmarks'>Back</a>
+            <h2>${categories.name}</h2>
+            ${categories.bookmarks
+              .map(
+                (bookmark) =>
+                  `
+              <li>${bookmark.name}
+                <a href="">${categories.name}</a>
+              </li>
+              `
+              )
+              .join("")}
           </body>
          </html>`
     );
