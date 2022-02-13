@@ -3,8 +3,10 @@ const sequelize = new Sequelize(
   process.env.DATABASE_URL || "postgres://localhost/bookmarker_plus_db"
 );
 const express = require("express");
+const { emptyQuery } = require("pg-protocol/dist/messages");
 const app = express();
-//app.use(express.urlencoded({extended: false})) //this we need for the post method to display the input
+
+app.use(express.urlencoded({ extended: false })); //this we need for the post method to display the input when we add
 
 //app.use(methodOverride('_method'))  -- use this when we try to say method=delete in the form
 
@@ -31,20 +33,41 @@ Category.hasMany(Bookmark);
 
 app.get("/", (req, res) => res.redirect("/bookmarks"));
 
-// app.post('/bookmarks' , async(req, res, next) => {
-//   try {
-//     const bookmark = await Bookmark.create(req.body)
-//     res.redirect
-//   }
-
-// })
+app.post("/bookmarks", async (req, res, next) => {
+  try {
+    const bookmark = await Bookmark.create(req.body);
+    res.redirect(`/categories/${bookmark.categoryId}`);
+  } catch (err) {
+    next(err);
+  }
+});
 
 app.get("/bookmarks", async (req, res, next) => {
   try {
     const bookmarks = await Bookmark.findAll({
       include: [Category],
     });
-    //const categories = await Category.findAll();
+    const categories = await Category.findAll();
+    const options = categories
+      .map(
+        (category) =>
+          `
+      <option value=${category.id}>
+        ${category.name}
+      </option>
+      `
+      )
+      .join("");
+    const htmlForm = `
+      <form method = 'POST'>
+        <input name='name' placeholder='name'/>
+        <label for"categories">Category</label>
+        <select name='categoryId' id="categories"/>
+          ${options}
+        </select>
+        <button>Add</button>
+      </form>
+    `;
     res.send(
       `<html>
         <head>
@@ -52,6 +75,7 @@ app.get("/bookmarks", async (req, res, next) => {
         </head>
         <h1>ACME Bookmarks +</h1>
         <body>
+            ${htmlForm}
             <ul>
              ${bookmarks
                .map(
@@ -73,7 +97,7 @@ app.get("/categories/:id", async (req, res, next) => {
     const categories = await Category.findByPk(req.params.id, {
       include: [Bookmark],
     });
-
+    console.log("this is categories", categories);
     res.send(
       `<html>
           <head>
